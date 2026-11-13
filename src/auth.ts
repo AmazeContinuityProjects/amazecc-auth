@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
 import { admin as adminPlugin, jwt } from "better-auth/plugins";
+import { adminAc, defaultRoles, userAc } from "better-auth/plugins/admin/access";
 import { oauthProvider } from "@better-auth/oauth-provider";
 import type { AuthEnv } from "./env";
 import { vtopLink } from "./plugins/vtop-link";
@@ -90,9 +91,15 @@ export function createAuth(env: AuthEnv, databaseOverride?: unknown) {
           url.protocol === "http:" && (url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "[::1]"),
       }),
       // Role hierarchy: `superadmin` > `admin` (granular permissions) > `user`.
+      // The admin plugin requires every adminRole to exist in `roles` —
+      // reuse the stock `adminAc` so superadmins get full admin-plugin rights.
       adminPlugin({
         defaultRole: "user",
         adminRoles: ["superadmin"],
+        roles: {
+          ...defaultRoles,
+          superadmin: adminAc,
+        },
       }),
       vtopLink(env),
     ],
