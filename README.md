@@ -13,8 +13,10 @@ Failed logins never touch VTOP — VTOP is proven once, at link time, server-to-
 ## What works today
 
 - Email + password sign-up/sign-in (internal UUID subject, `vtopRegNo` optional extra field)
-- Worker-rendered `/sign-in`, `/sign-up`, `/consent`, `/account` pages (Microsoft/Google-grade SSO look; `logo.png` served from the worker)
-- Full OIDC / OAuth 2.1 provider (authorization code + PKCE, refresh tokens, JWKS, userinfo, introspection, revocation, back-channel logout, client credentials grant, DPoP-ready)
+- Worker-rendered `/sign-in`, `/sign-up`, `/consent`, `/account`, `/device` pages (Microsoft/Google-grade SSO look; light + dark; `logo.png` served from the worker)
+- Full OIDC / OAuth 2.1 provider (authorization code + PKCE, refresh tokens, JWKS, userinfo, introspection, revocation, end-session, back-channel logout, client credentials grant, DPoP-ready)
+- RFC 8628 **device authorization grant**: `POST /api/auth/device/code` issues a code; the user approves at `/device`; registered OAuth clients poll `/oauth2/token` with `grant_type=urn:ietf:params:oauth:grant-type:device_code` and receive first-class OAuth tokens (scoped, audience-bound, introspectable). Discovery advertises `device_authorization_endpoint` + the grant URN. First-party device logins (no client registration) get a session token from `/device/token` instead.
+- **Custom userinfo claims**: `role` and `permissions` (Amaze ID RBAC) ride in `/userinfo` - every first-party OIDC client can gate its UI with one call, no per-app role tables.
 - Optional VTOP linking: `POST /api/vtop/link` → server calls `VTOP_LOGIN_URL` (default `https://api.amazecc.com/api/login`) with the presented credentials, stores only the reg number (`authorizedID`) as `account { providerId: "vtop" }` and mirrors it onto `user.vtopRegNo`. The VTOP password is never stored, logged, or returned.
 - Admin primitives (`user.role`, default `user`; `admin` for operators) — the future home of the admin/club claim migration
 - Sessions in D1 (30-day rolling), rate limits in D1
@@ -106,8 +108,11 @@ OIDC endpoints are under `/api/auth`:
 | JWKS | `/api/auth/jwks` |
 | Userinfo | `/api/auth/oauth2/userinfo` |
 | End session | `/api/auth/oauth2/end-session` |
+| Device authorization (RFC 8628) | `/api/auth/device/code` (request), `/device` (user approval page), `/api/auth/oauth2/token` (grant_type `urn:ietf:params:oauth:grant-type:device_code`) |
 
-The host root exposes `/health`, `/.well-known/*` (308 redirects), `/sign-in`, `/consent`, `/account`.
+The host root exposes `/health`, `/.well-known/*` (308 redirects), `/sign-in`, `/sign-up`, `/consent`, `/account`, `/device`.
+
+Access tokens issued for `authorization_code`/`refresh_token` are **opaque** (1-hour TTL, SHA-256-hashed at rest in `oauthAccessToken`) unless a resource audience is registered - in which case they become EdDSA JWTs (`typ: "at+jwt"`). Resource servers sharing the D1 database (e.g. `amazecc-api-hono`) verify tokens with one indexed lookup; JWT access tokens verify offline against `/api/auth/jwks`. ID tokens are never valid API credentials.
 
 ## Environment
 
@@ -122,5 +127,6 @@ The host root exposes `/health`, `/.well-known/*` (308 redirects), `/sign-in`, `
 ## Known gaps / next
 
 - **Email delivery** is not wired up, so `requireEmailVerification` is `false`. Add a mail provider and flip it before public sign-ups open.
-- **Production OAuth client registration** is an operator procedure (see migration plan); there is intentionally no public self-registration (`allowDynamicClientRegistration: false`).
-- **FFCS accounts** federate in Phase 3 — see the migration plan.
+- **Production OAuth clients registered so far**: `amazecc-admin-dashboard` and `amazecc-club-hub` (public PKCE clients, `skip_consent`, 1h access tokens). There is intentionally no public self-registration (`allowDynamicClientRegistration: false`).
+- **Device flow**: works (see above). Registered clients must list `urn:ietf:params:oauth:grant-type:device_code` in `grantTypes` to receive OAuth tokens from the device grant; otherwise they receive a first-party session token via `/device/token`.
+- **FFCS accounts** federate in Phase 3 - see the migration plan.

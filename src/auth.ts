@@ -1,7 +1,7 @@
 import { betterAuth } from "better-auth";
 import { admin as adminPlugin, jwt } from "better-auth/plugins";
 import { adminAc, defaultRoles, userAc } from "better-auth/plugins/admin/access";
-import { oauthProvider } from "@better-auth/oauth-provider";
+import { oauthProvider, oauthDeviceAuthorization } from "@better-auth/oauth-provider";
 import type { AuthEnv } from "./env";
 import { vtopLink } from "./plugins/vtop-link";
 
@@ -57,7 +57,10 @@ export function createAuth(env: AuthEnv, databaseOverride?: unknown) {
     },
 
     rateLimit: {
-      enabled: true,
+      // better-auth rate limits persist in D1 by design. Tests hammer the same
+      // endpoints in rapid succession, so they would observe order-dependent
+      // 429s - disable here (vitest sets NODE_ENV=test), never in production.
+      enabled: process.env.NODE_ENV !== "test",
       storage: "database",
     },
 
@@ -89,6 +92,25 @@ export function createAuth(env: AuthEnv, databaseOverride?: unknown) {
         // local development of the client apps. Everything else stays strict.
         allowInsecureRedirectUri: (url) =>
           url.protocol === "http:" && (url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "[::1]"),
+        // Amaze ID RBAC claims ride in userinfo so any first-party OIDC client
+        // can gate its UI without a second round-trip (Entra-style roles claim).
+        // Reserved ID-token claim names are stripped by the provider, so these
+        // only attach to userinfo - apps must call /userinfo for fresh values.
+        customUserInfoClaims: async ({ user }) => {
+          const u = user as { role?: string | null; permissions?: string | null };
+          return {
+            role: u.role ?? "user",
+            permissions: typeof u.permissions === "string" ? u.permissions : null,
+          };
+        },
+      }),
+      // RFC 8628 device authorization grant, wired into the provider's shared
+      // issuance: registered OAuth clients poll /oauth2/token with
+      // grant_type=urn:ietf:params:oauth:grant-type:device_code and receive
+      // first-class OAuth token sets (scoped, audience-bound, introspectable,
+      // with optional refresh). Discovery advertises device_authorization_endpoint.
+      oauthDeviceAuthorization({
+        verificationUri: `${env.BETTER_AUTH_URL}/device`,
       }),
       // Role hierarchy: `superadmin` > `admin` (granular permissions) > `user`.
       // The admin plugin requires every adminRole to exist in `roles` —

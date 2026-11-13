@@ -403,3 +403,157 @@ export function accountPage(): string {
 })();
 </script>`);
 }
+
+export function devicePage(): string {
+  return page("Authorize device", `
+<main class="wrap">
+  <div class="card">
+    ${brand()}
+    <h1>Authorize a device</h1>
+    <p class="sub">A device or app wants to sign you in with Amaze ID. Enter the code shown on it to continue.</p>
+
+    <div id="step-code">
+      <label for="user-code">One-time code</label>
+      <input id="user-code" type="text" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" maxlength="16" placeholder="e.g. ABCD-EFGH" style="font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;letter-spacing:.08em;text-transform:uppercase" />
+      <button id="continue" type="button">Continue</button>
+      <p class="error" id="error"></p>
+    </div>
+
+    <div id="step-review" style="display:none">
+      <p class="sub" style="margin-bottom:6px">This request will get access to:</p>
+      <div id="device-info"></div>
+      <div id="device-scopes"></div>
+      <div class="row">
+        <button id="deny" type="button" class="secondary">Deny</button>
+        <button id="approve" type="button">Allow</button>
+      </div>
+      <p class="error" id="error2"></p>
+    </div>
+
+    <div id="step-done" style="display:none">
+      <p class="ok" id="done-ok" style="display:block"></p>
+      <p class="sub" style="margin-top:12px">You can close this page and return to your device.</p>
+    </div>
+  </div>
+  <p class="footer">AmazeContinuityProjects — device access is revocable per device in each app's settings.</p>
+</main>
+<script>
+(function () {
+  var err = document.getElementById("error");
+  var err2 = document.getElementById("error2");
+  var codeInput = document.getElementById("user-code");
+  var continueBtn = document.getElementById("continue");
+  var stepCode = document.getElementById("step-code");
+  var stepReview = document.getElementById("step-review");
+  var stepDone = document.getElementById("step-done");
+  var approveBtn = document.getElementById("approve");
+  var denyBtn = document.getElementById("deny");
+  var doneOk = document.getElementById("done-ok");
+
+  var prefill = new URLSearchParams(window.location.search).get("user_code");
+  if (prefill) codeInput.value = prefill;
+
+  function show(el) { el.style.display = "block"; }
+  function hide(el) { el.style.display = "none"; }
+  function showErr(target, msg) { target.textContent = msg; target.style.display = "block"; }
+
+  // The approval endpoints require an active Amaze ID session. If there is
+  // none, send the user through sign-in first and come straight back here.
+  fetch("/api/auth/get-session", { credentials: "same-origin" }).then(function (res) {
+    if (res.ok) {
+      var code = codeInput.value.trim();
+      if (code) verify(code);
+      return;
+    }
+    var next = "/device" + (codeInput.value.trim() ? "?user_code=" + encodeURIComponent(codeInput.value.trim()) : "");
+    window.location.assign("/sign-in?next=" + encodeURIComponent(next));
+  }).catch(function () {
+    window.location.assign("/sign-in?next=" + encodeURIComponent("/device"));
+  });
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (ch) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch];
+    });
+  }
+
+  function verify(code) {
+    err.style.display = "none";
+    continueBtn.disabled = true;
+    fetch("/api/auth/device?user_code=" + encodeURIComponent(code), { credentials: "same-origin" })
+      .then(async function (res) {
+        continueBtn.disabled = false;
+        var body = await res.json().catch(function () { return null; });
+        if (!res.ok || !body) {
+          showErr(err, (body && body.error_description) || "That code is invalid or has expired.");
+          return;
+        }
+        if (body.status !== "pending") {
+          hide(stepCode);
+          show(stepDone);
+          doneOk.textContent = body.status === "approved"
+            ? "This device was already authorized. You can return to it."
+            : "This device request was already handled.";
+          return;
+        }
+        var info = document.getElementById("device-info");
+        var rows = [];
+        rows.push('<div class="kv"><span>Application</span><span>' + escapeHtml(body.client_id || "First-party app") + "</span></div>");
+        if (body.resource) rows.push('<div class="kv"><span>Access to</span><span>' + escapeHtml(String(body.resource)) + "</span></div>");
+        info.innerHTML = rows.join("");
+        var scopeBox = document.getElementById("device-scopes");
+        var scope = body.scope || "openid profile email";
+        scopeBox.innerHTML = String(scope).split(/\s+/).filter(Boolean).map(function (s) {
+          return '<div class="scope">' + escapeHtml(s) + "</div>";
+        }).join("");
+        hide(stepCode);
+        show(stepReview);
+      })
+      .catch(function () {
+        continueBtn.disabled = false;
+        showErr(err, "Network error. Check your connection and try again.");
+      });
+  }
+
+  continueBtn.addEventListener("click", function () {
+    var code = codeInput.value.trim().toUpperCase();
+    if (!code) { showErr(err, "Enter the code shown on your device."); return; }
+    verify(code);
+  });
+  codeInput.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); continueBtn.click(); } });
+
+  function decide(accept) {
+    err2.style.display = "none";
+    approveBtn.disabled = true;
+    denyBtn.disabled = true;
+    fetch(accept ? "/api/auth/device/approve" : "/api/auth/device/deny", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ userCode: codeInput.value.trim().toUpperCase() }),
+    })
+      .then(async function (res) {
+        var body = await res.json().catch(function () { return null; });
+        if (!res.ok) {
+          approveBtn.disabled = false;
+          denyBtn.disabled = false;
+          showErr(err2, (body && body.error_description) || "Could not process your decision.");
+          return;
+        }
+        hide(stepReview);
+        show(stepDone);
+        doneOk.textContent = accept ? "Device authorized. You can return to it." : "Device denied.";
+      })
+      .catch(function () {
+        approveBtn.disabled = false;
+        denyBtn.disabled = false;
+        showErr(err2, "Network error. Please try again.");
+      });
+  }
+
+  approveBtn.addEventListener("click", function () { decide(true); });
+  denyBtn.addEventListener("click", function () { decide(false); });
+})();
+</script>`);
+}
+

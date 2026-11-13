@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { createAuth } from "./auth";
 import type { AuthEnv } from "./env";
-import { accountPage, consentPage, signInPage } from "./pages";
+import { accountPage, consentPage, devicePage, signInPage } from "./pages";
 
 const app = new Hono<{ Bindings: AuthEnv }>();
 
@@ -59,6 +59,7 @@ app.get("/", (c) => c.redirect("/sign-in", 302));
 app.get("/sign-in", (c) => c.html(page(c, signInPage("sign-in"))));
 app.get("/sign-up", (c) => c.html(page(c, signInPage("sign-up"))));
 app.get("/consent", (c) => c.html(page(c, consentPage())));
+app.get("/device", (c) => c.html(page(c, devicePage())));
 app.get("/account", (c) => c.html(page(c, accountPage())));
 
 export default app;
