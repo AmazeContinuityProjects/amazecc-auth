@@ -56,7 +56,8 @@ const page = (c: { header: (k: string, v: string) => void }, body: string) => {
 };
 
 app.get("/", (c) => c.redirect("/sign-in", 302));
-app.get("/sign-in", (c) => c.html(page(c, signInPage())));
+app.get("/sign-in", (c) => c.html(page(c, signInPage("sign-in"))));
+app.get("/sign-up", (c) => c.html(page(c, signInPage("sign-up"))));
 app.get("/consent", (c) => c.html(page(c, consentPage())));
 app.get("/account", (c) => c.html(page(c, accountPage())));
 

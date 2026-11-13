@@ -4,6 +4,10 @@ compatibility_date = "2026-10-03"
 compatibility_flags = ["nodejs_compat"]
 account_id = "5abd6d7c8175ba56c3058e34db158aa8"
 
+# Static assets (logo used on the sign-in / sign-up / consent pages)
+[assets]
+directory = "./public"
+
 # Custom domain: auth.amazecc.com (auto-creates the DNS record, since
 # amazecc.com is a zone on this account)
 [[routes]]

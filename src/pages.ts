@@ -1,65 +1,88 @@
 /**
- * Worker-rendered pages: sign-in, consent, account.
+ * Worker-rendered pages: sign-in, sign-up, consent, account.
  *
- * These exist so the OIDC flow works end-to-end without a separate frontend
- * deployment. They are plain HTML + vanilla JS and intentionally avoid CDN
- * dependencies. When `?sig=` is present the browser is mid-OAuth-authorize;
- * forms then submit as full-page POSTs carrying `oauth_query` (a signed copy
- * of the query string) so better-auth can resume the authorization request
- * after the session is created.
+ * Clean, enterprise-grade SSO pages (Microsoft / Google style): neutral canvas,
+ * white card, generous type scale, full-width primary action. Plain HTML +
+ * vanilla JS, no CDN dependencies. When `?sig=` is present the browser is
+ * mid-OAuth-authorize; forms then submit as full-page POSTs carrying
+ * `oauth_query` (a signed copy of the query string) so better-auth can
+ * resume the authorization request after the session is created.
  */
 
 const css = `
-:root { color-scheme: light dark; }
+:root { color-scheme: light; }
 * { box-sizing: border-box; }
+html, body { margin: 0; }
 body {
-  margin: 0; min-height: 100vh; display: grid; place-items: center;
+  min-height: 100vh; display: grid; place-items: center; padding: 32px 20px;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Inter, Roboto, sans-serif;
-  background: radial-gradient(1200px 800px at 70% -10%, #2b2154 0%, transparent 60%),
-              radial-gradient(1000px 700px at -10% 110%, #1c2a52 0%, transparent 55%),
-              #0d0d14;
-  color: #e8e8ef; padding: 24px;
+  background: #f4f4f5;
+  color: #1c1917;
 }
+.wrap { width: 100%; max-width: 406px; }
+
+.brand { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-bottom: 22px; }
+.logo { width: 56px; height: 56px; border-radius: 13px; box-shadow: 0 6px 18px rgba(0,0,0,.12); }
+.brand-name { font-size: 16px; font-weight: 650; color: #111827; letter-spacing: -.01em; }
+
 .card {
-  width: 100%; max-width: 420px; background: rgba(255,255,255,.04);
-  border: 1px solid rgba(255,255,255,.09); border-radius: 18px;
-  padding: 32px; backdrop-filter: blur(12px);
-  box-shadow: 0 24px 60px rgba(0,0,0,.45);
+  background: #ffffff; border: 1px solid #e7e5e4; border-radius: 14px;
+  padding: 36px 36px 28px;
+  box-shadow: 0 10px 30px rgba(28, 25, 23, .06), 0 1px 2px rgba(28, 25, 23, .05);
 }
-.brand { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
-.logo {
-  width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center;
-  background: linear-gradient(135deg, #f5c451 0%, #e2827a 100%);
-  font-weight: 800; font-size: 20px; color: #1a1206;
-}
-h1 { font-size: 22px; margin: 0; letter-spacing: -.01em; }
-.sub { color: #a3a3b6; font-size: 13px; margin: 4px 0 22px; }
-label { display: block; font-size: 12px; color: #b9b9cb; margin: 14px 0 6px; }
+
+h1 { font-size: 23px; line-height: 1.25; margin: 0; letter-spacing: -.015em; color: #111827; font-weight: 600; }
+.sub { color: #605e5c; font-size: 14px; margin: 8px 0 22px; line-height: 1.45; }
+
+label { display: block; font-size: 13px; font-weight: 600; color: #323130; margin: 16px 0 6px; }
 input[type=email], input[type=password], input[type=text] {
-  width: 100%; padding: 11px 13px; border-radius: 10px; font-size: 14px;
-  border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.05); color: #fff; outline: none;
+  width: 100%; height: 42px; padding: 0 12px; border-radius: 9px; font-size: 15px;
+  border: 1.5px solid #d1d5db; background: #ffffff; color: #111827; outline: none;
+  transition: border-color .15s, box-shadow .15s;
 }
-input:focus { border-color: #f5c451; box-shadow: 0 0 0 3px rgba(245,196,81,.15); }
+input::placeholder { color: #a3a29e; }
+input:focus { border-color: #d97706; box-shadow: 0 0 0 3px rgba(217,119,6,.18); }
+
 button {
-  width: 100%; margin-top: 18px; padding: 12px; border: 0; border-radius: 10px;
-  font-weight: 700; font-size: 14px; cursor: pointer; color: #1a1206;
-  background: linear-gradient(135deg, #f5c451 0%, #e2827a 100%);
+  width: 100%; height: 44px; margin-top: 22px; padding: 0 16px; border: 0; border-radius: 9px;
+  font-weight: 650; font-size: 15px; cursor: pointer; color: #1a1206;
+  background: linear-gradient(135deg, #fcd34d 0%, #fb923c 100%);
+  letter-spacing: .005em;
+  transition: filter .15s, transform .05s;
 }
-button.secondary { background: rgba(255,255,255,.08); color: #e8e8ef; font-weight: 600; }
-button:disabled { opacity: .6; cursor: default; }
-.toggle { margin-top: 14px; text-align: center; font-size: 13px; color: #a3a3b6; }
-.toggle a { color: #f5c451; text-decoration: none; }
-.error { display: none; margin-top: 14px; padding: 10px 12px; border-radius: 10px;
-  background: rgba(255,80,80,.12); border: 1px solid rgba(255,80,80,.35); color: #ffb3b3; font-size: 13px; }
-.ok { display: none; margin-top: 14px; padding: 10px 12px; border-radius: 10px;
-  background: rgba(80,220,140,.10); border: 1px solid rgba(80,220,140,.35); color: #a9f0c6; font-size: 13px; }
-.scope { font-family: ui-monospace, monospace; font-size: 12px; background: rgba(255,255,255,.06);
-  border-radius: 8px; padding: 8px 10px; margin: 6px 0; }
+button:hover { filter: brightness(1.02); }
+button:active { transform: translateY(1px); }
+button:disabled { opacity: .65; cursor: default; transform: none; }
+
+button.secondary {
+  color: #323130; background: #ffffff; border: 1.5px solid #d1d5db; font-weight: 600;
+}
+button.secondary:hover { background: #f9fafb; }
+
+.error { display: none; margin: 14px 0 0; padding: 12px 14px; border-radius: 9px;
+  background: #fdf2f2; border: 1px solid #f3c2c2; color: #b91c1c; font-size: 13.5px; line-height: 1.45; }
+.ok { display: none; margin: 14px 0 0; padding: 12px 14px; border-radius: 9px;
+  background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; font-size: 13.5px; line-height: 1.45; }
+
+.toggle { margin-top: 18px; text-align: center; font-size: 13.5px; color: #605e5c; }
+.toggle a { color: #b45309; text-decoration: none; font-weight: 600; }
+.toggle a:hover { text-decoration: underline; }
+
+.scope { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12.5px;
+  background: #f5f5f4; border: 1px solid #e7e5e4; border-radius: 8px; padding: 9px 12px; margin: 6px 0; color: #44403c; }
 .row { display: flex; gap: 10px; }
-.row button { margin-top: 20px; }
-.kv { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.07); }
-.kv span:last-child { color: #fff; font-family: ui-monospace, monospace; }
-.footer { margin-top: 20px; font-size: 11px; color: #6f6f84; text-align: center; }
+.row button { margin-top: 18px; }
+
+.kv { display: flex; justify-content: space-between; gap: 12px; font-size: 13.5px; padding: 10px 0; border-bottom: 1px solid #e7e5e4; }
+.kv span:first-child { color: #605e5c; }
+.kv span:last-child { color: #111827; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+
+.footer { margin-top: 18px; padding-top: 16px; border-top: 1px solid #eceae8; font-size: 11.5px; color: #8a8784; text-align: center; line-height: 1.5; }
+.tiny { margin-top: 12px; font-size: 11px; color: #8a8784; text-align: center; }
+:focus-visible { outline: 2px solid #d97706; outline-offset: 2px; }
+@media (prefers-color-scheme: dark) {
+  /* Dark mode intentionally not applied yet — the design system is light-only for now. */
+}
 `;
 
 /** Replicates buildSignedOAuthQuery from @better-auth/oauth-provider/client. */
@@ -84,35 +107,52 @@ function page(title: string, body: string): string {
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>${title} · Amaze ID</title>
+<meta name="color-scheme" content="light" />
+<link rel="icon" href="/logo.png" type="image/png" />
+<title>${title} — Amaze ID</title>
 <style>${css}</style>
 </head>
 <body>${body}</body>
 </html>`;
 }
 
-export function signInPage(): string {
-  return page("Sign in", `
-<main class="card">
-  <div class="brand"><div class="logo">A</div><div><h1>Amaze ID</h1></div></div>
-  <p class="sub" id="sub">One account for all of AmazeContinuityProjects.</p>
+function brand(): string {
+  return `<div class="brand">
+  <img class="logo" src="/logo.png" alt="AmazeCC" width="56" height="56" />
+  <div class="brand-name">Amaze ID</div>
+</div>`;
+}
 
-  <form id="form" method="post" action="/api/auth/sign-in/email">
-    <input type="hidden" name="oauth_query" id="oauth_query" />
-    <div id="name-row" style="display:none">
-      <label for="name">Name</label>
-      <input id="name" name="name" type="text" autocomplete="name" maxlength="80" />
-    </div>
-    <label for="email">Email</label>
-    <input id="email" name="email" type="email" required autocomplete="email" autofocus />
-    <label for="password">Password</label>
-    <input id="password" name="password" type="password" required minlength="8" autocomplete="current-password" />
-    <button type="submit" id="submit">Sign in</button>
-  </form>
+export function signInPage(mode: "sign-in" | "sign-up" = "sign-in"): string {
+  const isSignUp = mode === "sign-up";
+  return page(isSignUp ? "Create account" : "Sign in", `
+<main class="wrap">
+  <div class="card">
+    ${brand()}
+    <h1>${isSignUp ? "Create your Amaze ID" : "Sign in"}</h1>
+    <p class="sub">${isSignUp
+      ? "Your Amaze ID works across every AmazeCC app — one account, one password."
+      : "Use your Amaze ID to continue to AmazeContinuityProjects."}</p>
 
-  <p class="error" id="error"></p>
-  <p class="toggle"><span id="toggle-text">Don't have an Amaze ID?</span> <a href="#" id="toggle">Create one</a></p>
-  <p class="footer">AmazeContinuityProjects · auth.amazecc.com</p>
+    <form id="form" method="post" action="${isSignUp ? "/api/auth/sign-up/email" : "/api/auth/sign-in/email"}">
+      <input type="hidden" name="oauth_query" id="oauth_query" />
+      <div id="name-row" style="${isSignUp ? "" : "display:none"}">
+        <label for="name">Full name</label>
+        <input id="name" name="name" type="text" autocomplete="name" maxlength="80" placeholder="e.g. Sugeeth Kumar" />
+      </div>
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" required autocomplete="email" autofocus placeholder="you@vit.ac.in" />
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" required minlength="8" autocomplete="${isSignUp ? "new-password" : "current-password"}" placeholder="${isSignUp ? "8+ characters" : "••••••••"}" />
+      <button type="submit" id="submit">${isSignUp ? "Create Amaze ID" : "Sign in"}</button>
+    </form>
+
+    <p class="error" id="error"></p>
+    <p class="toggle">${isSignUp
+      ? 'Already have an Amaze ID? <a href="/sign-in">Sign in instead</a>'
+      : 'Don\'t have an Amaze ID? <a href="/sign-up">Create one</a>'}</p>
+  </div>
+  <p class="footer">AmazeContinuityProjects</p>
 </main>
 <script>
 ${signedQuerySnippet}
@@ -122,36 +162,14 @@ ${signedQuerySnippet}
   var isOAuth = Boolean(q);
   var form = document.getElementById("form");
   var oauthInput = document.getElementById("oauth_query");
-  var mode = "sign-in";
-  var nameRow = document.getElementById("name-row");
   var submit = document.getElementById("submit");
-  var toggle = document.getElementById("toggle");
-  var toggleText = document.getElementById("toggle-text");
-  var sub = document.getElementById("sub");
   var err = document.getElementById("error");
-
-  function setMode(next) {
-    mode = next;
-    var isSignUp = mode === "sign-up";
-    nameRow.style.display = isSignUp ? "block" : "none";
-    submit.textContent = isSignUp ? "Create Amaze ID" : "Sign in";
-    toggle.textContent = isSignUp ? "Sign in instead" : "Create one";
-    toggleText.textContent = isSignUp ? "Already have an Amaze ID?" : "Don't have an Amaze ID?";
-    sub.textContent = isSignUp
-      ? "Your Amaze ID works everywhere AmazeContinuityProjects does."
-      : "One account for all of AmazeContinuityProjects.";
-    form.action = isSignUp ? "/api/auth/sign-up/email" : "/api/auth/sign-in/email";
-    document.getElementById("password").autocomplete = isSignUp ? "new-password" : "current-password";
-    err.style.display = "none";
-  }
-
-  toggle.addEventListener("click", function (e) {
-    e.preventDefault();
-    setMode(mode === "sign-in" ? "sign-up" : "sign-in");
-  });
 
   if (isOAuth) {
     oauthInput.value = q;
+    // keep the toggle link in this OAuth flow so "Create one" resumes correctly
+    var t = document.querySelector(".toggle a");
+    if (t) t.href = t.getAttribute("href").split("?")[0] + "?" + window.location.search.slice(1);
     return; // full-page POST; the server resumes the OAuth flow on success
   }
 
@@ -161,7 +179,9 @@ ${signedQuerySnippet}
     submit.disabled = true;
     try {
       var payload = { email: document.getElementById("email").value, password: document.getElementById("password").value };
-      if (mode === "sign-up") {
+      var nameRow = document.getElementById("name-row");
+      var isSignUp = nameRow && nameRow.style.display !== "none";
+      if (isSignUp) {
         var name = document.getElementById("name").value.trim();
         payload.name = name || payload.email.split("@")[0];
       }
@@ -192,20 +212,23 @@ ${signedQuerySnippet}
 
 export function consentPage(): string {
   return page("Authorize", `
-<main class="card">
-  <div class="brand"><div class="logo">A</div><div><h1>Authorize application</h1></div></div>
-  <p class="sub">An application is requesting access to your Amaze ID.</p>
-  <p class="sub" style="margin-bottom:6px">Requested scopes:</p>
-  <div id="scopes"></div>
-  <form id="consent-form">
-    <input type="hidden" id="scope" />
-    <div class="row">
-      <button type="submit" name="accept" value="false" class="secondary">Deny</button>
-      <button type="submit" name="accept" value="true">Allow</button>
-    </div>
-  </form>
-  <p class="error" id="error"></p>
-  <p class="footer">You can revoke access later from each app. Amaze ID never shares your password.</p>
+<main class="wrap">
+  <div class="card">
+    ${brand()}
+    <h1>Authorize application</h1>
+    <p class="sub">An application wants to sign you in with Amaze ID.</p>
+    <p class="sub" style="margin-bottom:6px">Requested access:</p>
+    <div id="scopes"></div>
+    <form id="consent-form">
+      <input type="hidden" id="scope" />
+      <div class="row">
+        <button type="submit" name="accept" value="false" class="secondary">Deny</button>
+        <button type="submit" name="accept" value="true">Allow</button>
+      </div>
+    </form>
+    <p class="error" id="error"></p>
+  </div>
+  <p class="footer">AmazeContinuityProjects — you can revoke access later, per app, in each app's settings.</p>
 </main>
 <script>
 ${signedQuerySnippet}
@@ -246,26 +269,29 @@ ${signedQuerySnippet}
 
 export function accountPage(): string {
   return page("Account", `
-<main class="card">
-  <div class="brand"><div class="logo">A</div><div><h1>Amaze ID</h1></div></div>
-  <p class="sub">Your account across AmazeContinuityProjects.</p>
-  <div class="kv"><span>Email</span><span id="email">…</span></div>
-  <div class="kv"><span>Name</span><span id="name">…</span></div>
-  <div class="kv"><span>VTOP linked</span><span id="vtop">…</span></div>
+<main class="wrap">
+  <div class="card">
+    ${brand()}
+    <h1>Your Amaze ID</h1>
+    <p class="sub">One account for every AmazeContinuityProjects app — AmazeCC, Club Hub, GoRoBo, FFCS, and more.</p>
+    <div class="kv"><span>Email</span><span id="email">…</span></div>
+    <div class="kv"><span>Name</span><span id="name">…</span></div>
+    <div class="kv"><span>VTOP</span><span id="vtop">…</span></div>
 
-  <form id="vtop-form">
-    <label for="vtop-user" style="margin-top:18px">Link VTOP <span style="color:#6f6f84">(optional)</span></label>
-    <input id="vtop-user" type="text" placeholder="VTOP username" autocomplete="off" required />
-    <label for="vtop-pass" style="margin-top:10px">VTOP password</label>
-    <input id="vtop-pass" type="password" placeholder="VTOP password" autocomplete="off" required />
-    <button type="submit" id="vtop-submit">Link VTOP account</button>
-  </form>
-  <button id="vtop-unlink" class="secondary" style="display:none;margin-top:10px">Unlink VTOP</button>
-  <p class="error" id="error"></p>
-  <p class="ok" id="ok"></p>
+    <form id="vtop-form">
+      <label for="vtop-user" style="margin-top:18px">Link VTOP account <span style="color:#a3a29e;font-weight:500">(optional)</span></label>
+      <input id="vtop-user" type="text" placeholder="VTOP username" autocomplete="off" required />
+      <label for="vtop-pass" style="margin-top:12px">VTOP password</label>
+      <input id="vtop-pass" type="password" placeholder="VTOP password" autocomplete="off" required />
+      <button type="submit" id="vtop-submit">Link VTOP account</button>
+    </form>
+    <button id="vtop-unlink" class="secondary" style="display:none;margin-top:12px">Unlink VTOP account</button>
+    <p class="error" id="error"></p>
+    <p class="ok" id="ok"></p>
 
-  <button id="signout" class="secondary">Sign out</button>
-  <p class="footer">AmazeContinuityProjects · auth.amazecc.com</p>
+    <button id="signout" class="secondary">Sign out</button>
+  </div>
+  <p class="footer">AmazeContinuityProjects</p>
 </main>
 <script>
 (function () {

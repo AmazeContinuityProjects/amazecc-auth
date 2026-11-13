@@ -13,7 +13,7 @@ Failed logins never touch VTOP — VTOP is proven once, at link time, server-to-
 ## What works today
 
 - Email + password sign-up/sign-in (internal UUID subject, `vtopRegNo` optional extra field)
-- Worker-rendered `/sign-in`, `/consent`, `/account` pages
+- Worker-rendered `/sign-in`, `/sign-up`, `/consent`, `/account` pages (Microsoft/Google-grade SSO look; `logo.png` served from the worker)
 - Full OIDC / OAuth 2.1 provider (authorization code + PKCE, refresh tokens, JWKS, userinfo, introspection, revocation, back-channel logout, client credentials grant, DPoP-ready)
 - Optional VTOP linking: `POST /api/vtop/link` → server calls `VTOP_LOGIN_URL` (default `https://api.amazecc.com/api/login`) with the presented credentials, stores only the reg number (`authorizedID`) as `account { providerId: "vtop" }` and mirrors it onto `user.vtopRegNo`. The VTOP password is never stored, logged, or returned.
 - Admin primitives (`user.role`, default `user`; `admin` for operators) — the future home of the admin/club claim migration
