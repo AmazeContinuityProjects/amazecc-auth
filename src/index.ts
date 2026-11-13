@@ -5,6 +5,27 @@ import { accountPage, consentPage, signInPage } from "./pages";
 
 const app = new Hono<{ Bindings: AuthEnv }>();
 
+// CORS contract mirrored from the main API: static clients call this worker
+// cross-origin. Bearer tokens in storage, no credentialed cookies needed.
+app.use("*", async (c, next) => {
+  if (c.req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: corsHeaders() });
+  }
+  await next();
+  for (const [k, v] of Object.entries(corsHeaders())) c.res.headers.set(k, v);
+});
+
+function corsHeaders(): Record<string, string> {
+  return {
+    "access-control-allow-origin": "*",
+    "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+    "access-control-allow-headers":
+      "Content-Type, Authorization, X-Requested-With, X-CSRF-Token, Accept, Accept-Version, Content-Length, Content-MD5, Date, X-Api-Version, X-Club-Id",
+    "access-control-expose-headers": "Content-Disposition, Content-Length, Content-Type",
+    "access-control-max-age": "86400",
+  };
+}
+
 // Liveness/readiness for Cloudflare + uptime monitors.
 app.get("/health", (c) => c.json({ ok: true, service: "amazecc-auth" }));
 
