@@ -36,6 +36,16 @@ export function createAuth(env: AuthEnv, databaseOverride?: unknown) {
           required: false,
           input: false,
         },
+        /**
+         * Granular admin permissions, comma-separated section keys
+         * (see amazecc-api-hono src/lib/permissions.ts). Superadmins ignore it.
+         * Server-set only (managed through /api/admin/users/*, D1 writes).
+         */
+        permissions: {
+          type: "string",
+          required: false,
+          input: false,
+        },
       },
     },
 
@@ -68,19 +78,21 @@ export function createAuth(env: AuthEnv, databaseOverride?: unknown) {
         loginPage: "/sign-in",
         consentPage: "/consent",
         allowDynamicClientRegistration: false,
-        // Only admins may register/manage OAuth clients. Without this, any
-        // authenticated session could register a new client.
-        clientPrivileges: async ({ user }) => (user as { role?: string }).role === "admin",
+        // Only admins/superadmins may register/manage OAuth clients. Without
+        // this, any authenticated session could register a new client.
+        clientPrivileges: async ({ user }) => {
+          const role = (user as { role?: string } | undefined)?.role;
+          return role === "admin" || role === "superadmin";
+        },
         // Allow plain-HTTP redirect URIs ONLY on literal loopback hosts, for
         // local development of the client apps. Everything else stays strict.
         allowInsecureRedirectUri: (url) =>
           url.protocol === "http:" && (url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "[::1]"),
       }),
-      // Role/permission primitives (`user.role`) — the future home of the
-      // admin/club claim migration off the HMAC token families.
+      // Role hierarchy: `superadmin` > `admin` (granular permissions) > `user`.
       adminPlugin({
         defaultRole: "user",
-        adminRoles: ["admin"],
+        adminRoles: ["superadmin"],
       }),
       vtopLink(env),
     ],
