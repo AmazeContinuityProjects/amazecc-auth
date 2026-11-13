@@ -1,0 +1,24 @@
+name = "amazecc-auth"
+main = "src/index.ts"
+compatibility_date = "2026-10-03"
+compatibility_flags = ["nodejs_compat"]
+account_id = "5abd6d7c8175ba56c3058e34db158aa8"
+
+# Custom domain: auth.amazecc.com (auto-creates the DNS record, since
+# amazecc.com is a zone on this account)
+[[routes]]
+pattern = "auth.amazecc.com"
+custom_domain = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "amazecc-auth"
+database_id = "8c4535b4-da9a-416e-8151-0d09db6ff9c6"
+
+[vars]
+BETTER_AUTH_URL = "https://auth.amazecc.com"
+# Where the VTOP scraper service lives (AmazeCC-API)
+VTOP_LOGIN_URL = "https://api.amazecc.com/api/login"
+
+# Secrets to set with `wrangler secret put`:
+#   BETTER_AUTH_SECRET   - 32+ byte random string (openssl rand -base64 32)

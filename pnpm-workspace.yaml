@@ -1,0 +1,8 @@
+allowBuilds:
+  '@embedded-postgres/windows-x64': true
+  '@prisma/client': false
+  better-sqlite3: true
+  esbuild: true
+  workerd: true
+overrides:
+  kysely: 0.28.19

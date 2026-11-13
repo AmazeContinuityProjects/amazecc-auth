@@ -1,0 +1,3 @@
+# Copy to .dev.vars for local dev. Generate a real one with:
+#   node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
+BETTER_AUTH_SECRET=replace-me-with-48-random-bytes-base64
