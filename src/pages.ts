@@ -1,44 +1,80 @@
 /**
  * Worker-rendered pages: sign-in, sign-up, consent, account.
  *
- * Clean, enterprise-grade SSO pages (Microsoft / Google style): neutral canvas,
- * white card, generous type scale, full-width primary action. Plain HTML +
- * vanilla JS, no CDN dependencies. When `?sig=` is present the browser is
- * mid-OAuth-authorize; forms then submit as full-page POSTs carrying
- * `oauth_query` (a signed copy of the query string) so better-auth can
- * resume the authorization request after the session is created.
+ * Clean, enterprise-grade SSO pages with a colorful backdrop (Microsoft /
+ * Google-style sign-in). Plain HTML + vanilla JS, no CDN dependencies.
+ * When `?sig=` is present the browser is mid-OAuth-authorize; forms then
+ * submit as full-page POSTs carrying `oauth_query` (a signed copy of
+ * the query string) so better-auth can resume the authorization request
+ * after the session is created.
  */
 
 const css = `
-:root { color-scheme: light; }
+:root { color-scheme: light dark; }
 * { box-sizing: border-box; }
 html, body { margin: 0; }
+
+/* Light canvas with a subtle chromatic sweep (like Microsoft/Google). */
 body {
   min-height: 100vh; display: grid; place-items: center; padding: 32px 20px;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Inter, Roboto, sans-serif;
-  background: #f4f4f5;
+  background:
+    radial-gradient(1200px 800px at 10% -10%, #c7d2fe 0%, transparent 50%),
+    radial-gradient(1000px 700px at 100% 80%, #fde68a 0%, transparent 50%),
+    radial-gradient(800px 600px at 50% 120%, #fecaca 0%, transparent 50%),
+    #f8fafc;
   color: #1c1917;
 }
+
+/* Dark variant — same colorful radial sweep, darker base. */
+@media (prefers-color-scheme: dark) {
+  body {
+    background:
+      radial-gradient(1200px 800px at 10% -10%, #1e1b4b 0%, transparent 50%),
+      radial-gradient(1000px 700px at 100% 80%, #3b0764 0%, transparent 50%),
+      radial-gradient(800px 600px at 50% 120%, #7f1d1d 0%, transparent 50%),
+      #09090b;
+    color: #e4e4e7;
+  }
+}
+
 .wrap { width: 100%; max-width: 406px; }
 
 .brand { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-bottom: 22px; }
-.logo { width: 56px; height: 56px; border-radius: 13px; box-shadow: 0 6px 18px rgba(0,0,0,.12); }
-.brand-name { font-size: 16px; font-weight: 650; color: #111827; letter-spacing: -.01em; }
+.logo { width: 56px; height: 56px; border-radius: 13px; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
+.brand-name { font-size: 16px; font-weight: 650; letter-spacing: -.01em; color: inherit; }
 
 .card {
   background: #ffffff; border: 1px solid #e7e5e4; border-radius: 14px;
   padding: 36px 36px 28px;
-  box-shadow: 0 10px 30px rgba(28, 25, 23, .06), 0 1px 2px rgba(28, 25, 23, .05);
+  box-shadow: 0 20px 50px rgba(28, 25, 23, .18), 0 2px 6px rgba(28, 25, 23, .08);
+}
+
+@media (prefers-color-scheme: dark) {
+  .card {
+    background: #18181b; border: 1px solid #27272a;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, .55), 0 2px 6px rgba(0, 0, 0, .35);
+  }
 }
 
 h1 { font-size: 23px; line-height: 1.25; margin: 0; letter-spacing: -.015em; color: #111827; font-weight: 600; }
+@media (prefers-color-scheme: dark) { h1 { color: #fafafa; } }
 .sub { color: #605e5c; font-size: 14px; margin: 8px 0 22px; line-height: 1.45; }
+@media (prefers-color-scheme: dark) { .sub { color: #a1a1aa; } }
 
 label { display: block; font-size: 13px; font-weight: 600; color: #323130; margin: 16px 0 6px; }
+@media (prefers-color-scheme: dark) { label { color: #d4d4d8; } }
+
 input[type=email], input[type=password], input[type=text] {
   width: 100%; height: 42px; padding: 0 12px; border-radius: 9px; font-size: 15px;
   border: 1.5px solid #d1d5db; background: #ffffff; color: #111827; outline: none;
   transition: border-color .15s, box-shadow .15s;
+}
+@media (prefers-color-scheme: dark) {
+  input[type=email], input[type=password], input[type=text] {
+    background: #27272a; border-color: #3f3f46; color: #fafafa;
+  }
+  input::placeholder { color: #71717a; }
 }
 input::placeholder { color: #a3a29e; }
 input:focus { border-color: #d97706; box-shadow: 0 0 0 3px rgba(217,119,6,.18); }
@@ -50,39 +86,56 @@ button {
   letter-spacing: .005em;
   transition: filter .15s, transform .05s;
 }
-button:hover { filter: brightness(1.02); }
+button:hover { filter: brightness(1.04); }
 button:active { transform: translateY(1px); }
 button:disabled { opacity: .65; cursor: default; transform: none; }
 
 button.secondary {
   color: #323130; background: #ffffff; border: 1.5px solid #d1d5db; font-weight: 600;
 }
+@media (prefers-color-scheme: dark) {
+  button.secondary { color: #e4e4e7; background: #27272a; border-color: #3f3f46; }
+  button.secondary:hover { background: #3f3f46; }
+}
 button.secondary:hover { background: #f9fafb; }
 
 .error { display: none; margin: 14px 0 0; padding: 12px 14px; border-radius: 9px;
   background: #fdf2f2; border: 1px solid #f3c2c2; color: #b91c1c; font-size: 13.5px; line-height: 1.45; }
+@media (prefers-color-scheme: dark) {
+  .error { background: #2d0c0c; border-color: #7f1d1d; color: #fca5a5; }
+}
 .ok { display: none; margin: 14px 0 0; padding: 12px 14px; border-radius: 9px;
   background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; font-size: 13.5px; line-height: 1.45; }
+@media (prefers-color-scheme: dark) {
+  .ok { background: #0f1f16; border-color: #14532d; color: #86efac; }
+}
 
 .toggle { margin-top: 18px; text-align: center; font-size: 13.5px; color: #605e5c; }
+@media (prefers-color-scheme: dark) { .toggle { color: #a1a1aa; } }
 .toggle a { color: #b45309; text-decoration: none; font-weight: 600; }
+@media (prefers-color-scheme: dark) { .toggle a { color: #fbbf24; } }
 .toggle a:hover { text-decoration: underline; }
 
 .scope { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12.5px;
   background: #f5f5f4; border: 1px solid #e7e5e4; border-radius: 8px; padding: 9px 12px; margin: 6px 0; color: #44403c; }
+@media (prefers-color-scheme: dark) {
+  .scope { background: #27272a; border-color: #3f3f46; color: #a1a1aa; }
+}
 .row { display: flex; gap: 10px; }
 .row button { margin-top: 18px; }
 
 .kv { display: flex; justify-content: space-between; gap: 12px; font-size: 13.5px; padding: 10px 0; border-bottom: 1px solid #e7e5e4; }
+@media (prefers-color-scheme: dark) { .kv { border-bottom-color: #27272a; color: #a1a1aa; } }
 .kv span:first-child { color: #605e5c; }
+@media (prefers-color-scheme: dark) { .kv span:first-child { color: #a1a1aa; } }
 .kv span:last-child { color: #111827; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+@media (prefers-color-scheme: dark) { .kv span:last-child { color: #fafafa; } }
 
 .footer { margin-top: 18px; padding-top: 16px; border-top: 1px solid #eceae8; font-size: 11.5px; color: #8a8784; text-align: center; line-height: 1.5; }
+@media (prefers-color-scheme: dark) { .footer { border-top-color: #27272a; color: #71717a; } }
 .tiny { margin-top: 12px; font-size: 11px; color: #8a8784; text-align: center; }
+@media (prefers-color-scheme: dark) { .tiny { color: #71717a; } }
 :focus-visible { outline: 2px solid #d97706; outline-offset: 2px; }
-@media (prefers-color-scheme: dark) {
-  /* Dark mode intentionally not applied yet — the design system is light-only for now. */
-}
 `;
 
 /** Replicates buildSignedOAuthQuery from @better-auth/oauth-provider/client. */
@@ -107,7 +160,7 @@ function page(title: string, body: string): string {
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta name="color-scheme" content="light" />
+<meta name="color-scheme" content="light dark" />
 <link rel="icon" href="/logo.png" type="image/png" />
 <title>${title} — Amaze ID</title>
 <style>${css}</style>
