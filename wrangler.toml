@@ -20,7 +20,7 @@ BETTER_AUTH_URL = "https://auth.amazecc.com"
 # Where the VTOP scraper service lives (AmazeCC-API)
 VTOP_LOGIN_URL = "https://api.amazecc.com/api/login"
 # Same-origin BFF consumers (verified by their Origin header on sign-in)
-TRUSTED_ORIGINS = "https://admin.amazecc.com,https://amazecc.com"
+TRUSTED_ORIGINS = "https://admin.amazecc.com,https://amazecc.com,https://clubs.amazecc.com,http://localhost:3003,http://127.0.0.1:3003"
 
 # Secrets to set with `wrangler secret put`:
 #   BETTER_AUTH_SECRET   - 32+ byte random string (openssl rand -base64 32)
